@@ -171,6 +171,7 @@ class Country(models.Model):
 ##
 @python_2_unicode_compatible
 class State(models.Model):
+    """Google maps address component - administrative_area_level_1"""
     name = models.CharField(max_length=165, blank=True)
     code = models.CharField(max_length=3, blank=True)
     country = models.ForeignKey(Country, related_name='states')
@@ -190,11 +191,93 @@ class State(models.Model):
     def to_str(self):
         return '%s'%(self.name or self.code)
 
+###
+### County
+###
+@python_2_unicode_compatible
+class Admin2(models.Model):
+    """
+    Google maps address component - administrative_area_level_2
+    In the US, this corresponds to a county. 
+    """
+    name = models.CharField(max_length=165, blank=True, default="")
+    state = models.ForeignKey(State, related_name='counties')
+
+    class Meta:
+        unique_together = ('name', 'state')
+        ordering = ('state', 'name')
+
+    def __str__(self):
+        txt = "{} - {} - {}".format(self.name,
+                                    self.state.name,
+                                    self.state.country.name)
+        return txt
+
+###
+### Admin 3 - unincorporated area
+###
+@python_2_unicode_compatible
+class Admin3(models.Model):
+    """
+    Google maps address component - administrative_area_level_3
+    In the US, this is an unincorporated area or township. 
+    Used in place of locality  when unavailable.
+    """
+    name = models.CharField(max_length=165)
+    state = models.ForeignKey(State)
+    admin2 = models.ForeignKey(Admin2, blank=True, null=True)
+
+    class Meta:
+        unique_together = ('name', 'state')
+        ordering = ('state', 'admin2', 'name')
+
+    def __str__(self):
+        txt = "{}, {} - {}".format(name, state.code, country.name)
+        return txt
+
+
+###
+### Admin 4
+###
+@python_2_unicode_compatible
+class Admin4(models.Model):
+    """
+    Google maps address component - administrative_area_level_4
+    """
+    name = models.CharField(max_length=165)
+    admin3 = models.ForeignKey(Admin3)
+
+    class Meta:
+        unique_together = ('name', 'admin3')
+        ordering = ('admin3', 'name')
+
+    def __str__(self):
+        return "{}, {}".format(self.name, self.admin3)
+
+
+@python_2_unicode_compatible
+class Admin5(models.Model):
+    """
+    Google maps address component - administrative_area_level_5
+    """
+    name = models.CharField(max_length=165)
+    admin4 = models.ForeignKey(Admin4)
+
+    class Meta:
+        unique_together = ('name', 'admin4')
+        ordering = ('admin4', 'name')
+
+    def __str__(self):
+        return "{}, {}".format(self.name, self.admin4)
+
+
+
 ##
 ## A locality (suburb).
 ##
 @python_2_unicode_compatible
 class Locality(models.Model):
+    """ Google maps address component - locality"""
     name = models.CharField(max_length=165, blank=True)
     postal_code = models.CharField(max_length=10, blank=True)
     state = models.ForeignKey(State, related_name='localities')
