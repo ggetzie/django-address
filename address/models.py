@@ -227,35 +227,32 @@ class Admin3(models.Model):
     """
     name = models.CharField(max_length=165)
     state = models.ForeignKey(State, on_delete=models.CASCADE)
-    admin2 = models.ForeignKey(Admin2, blank=True, null=True,
+    parent = models.ForeignKey(Admin2, blank=True, null=True,
                                on_delete=models.CASCADE)
 
     class Meta:
         unique_together = ('name', 'state')
-        ordering = ('state', 'admin2', 'name')
+        ordering = ('state', 'parent', 'name')
 
     def __str__(self):
         txt = "{}, {} - {}".format(name, state.code, country.name)
         return txt
 
 
-###
-### Admin 4
-###
 @python_2_unicode_compatible
 class Admin4(models.Model):
     """
     Google maps address component - administrative_area_level_4
     """
     name = models.CharField(max_length=165)
-    admin3 = models.ForeignKey(Admin3, on_delete=models.CASCADE)
+    parent = models.ForeignKey(Admin3, on_delete=models.CASCADE)
 
     class Meta:
-        unique_together = ('name', 'admin3')
-        ordering = ('admin3', 'name')
+        unique_together = ('name', 'parent')
+        ordering = ('parent', 'name')
 
     def __str__(self):
-        return "{}, {}".format(self.name, self.admin3)
+        return "{}, {}".format(self.name, self.parent)
 
 
 @python_2_unicode_compatible
@@ -264,15 +261,14 @@ class Admin5(models.Model):
     Google maps address component - administrative_area_level_5
     """
     name = models.CharField(max_length=165)
-    admin4 = models.ForeignKey(Admin4, on_delete=models.CASCADE)
+    parent = models.ForeignKey(Admin4, on_delete=models.CASCADE)
 
     class Meta:
-        unique_together = ('name', 'admin4')
-        ordering = ('admin4', 'name')
+        unique_together = ('name', 'parent')
+        ordering = ('parent', 'name')
 
     def __str__(self):
-        return "{}, {}".format(self.name, self.admin4)
-
+        return "{}, {}".format(self.name, self.parent)
 
 
 ##
@@ -305,15 +301,128 @@ class Locality(models.Model):
         return txt
 
 ###
-### sublocality sublocality level 1 if multiple
+### sublocality (level 1 if multiple)
 ###
 class SubLocality1(models.Model):
+    """ Google maps address component - sublocality or sublocality_level_1"""
     name = models.CharField(max_length=165)
     locality = models.ForeignKey(Locality, on_delete=models.CASCADE)
+
+    class Meta:
+        unique_together = ('name', 'locality')
+        ordering = ('name', 'locality')
 
     def __str__(self):
         return "{}, {}".format(self.name, self.locality)
 
+###
+### sublocality level 2
+###    
+class SubLocality2(models.Model):
+    """ Google maps address component - sublocality_level_2"""
+    name = models.CharField(max_length=165)
+    parent = models.ForeignKey(SubLocality1, on_delete=models.CASCADE)
+
+    class Meta:
+        unique_together = ('name', 'parent')
+        ordering = ('parent', 'name')
+
+    def __str__(self):
+        return "{}, {}".format(self.name, self.parent)
+
+
+###
+### sublocality level 3
+###    
+class SubLocality3(models.Model):
+    """ Google maps address component - sublocality_level_3"""
+    name = models.CharField(max_length=165)
+    parent = models.ForeignKey(SubLocality2, on_delete=models.CASCADE)
+
+    class Meta:
+        unique_together = ('name', 'parent')
+        ordering = ('parent', 'name')
+
+    def __str__(self):
+        return "{}, {}".format(self.name, self.parent)
+
+    
+###
+### sublocality level 4
+###    
+class SubLocality4(models.Model):
+    """ Google maps address component - sublocality_level_4"""
+    name = models.CharField(max_length=165)
+    parent = models.ForeignKey(SubLocality3, on_delete=models.CASCADE)
+
+    class Meta:
+        unique_together = ('name', 'parent')
+        ordering = ('parent', 'name')    
+
+    def __str__(self):
+        return "{}, {}".format(self.name, self.parent)
+
+
+###
+### sublocality level 5
+###    
+class SubLocality5(models.Model):
+    """ Google maps address component - sublocality_level_5"""
+    name = models.CharField(max_length=165)
+    parent = models.ForeignKey(SubLocality4, on_delete=models.CASCADE)
+
+    class Meta:
+        unique_together = ('name', 'parent')
+        ordering = ('parent', 'name')    
+
+    def __str__(self):
+        return "{}, {}".format(self.name, self.parent)
+
+
+class Neighborhood(models.Model):
+
+    name = models.CharField(max_length=165)
+    locality = models.ForeignKey(Locality, on_delete=models.CASCADE)
+
+    class Meta:
+        unique_together = ('name', 'locality')
+        ordering = ('locality', 'name')
+
+    def __str__(self):
+        return "{}, {}".format(self.name, self.locality)
+
+
+class Airport(models.Model):
+    name = models.CharField(max_length=165, unique=True)
+
+    def __str__(self):
+        return self.name
+
+
+class PostalCode(models.Model):
+    code = models.CharField(max_length=15)
+    country = models.ForeignKey(Country, on_delete=models.CASCADE)
+
+    class Meta:
+        unique_together = ('code', 'country')
+        ordering = ('country', 'code')
+
+    def __str__(self):
+        return "{} - {}".format(self.code, self.country)
+
+
+class PostalCodeSuffix(models.Model):
+    suffix = models.CharField(max_length=15)
+    code = models.ForeignKey(PostalCode, on_delete=models.CASCADE)
+
+    class Meta:
+        unique_together =  ('suffix', 'code')
+        ordering = ('code', 'suffix')
+
+    def __str__(self):
+        return "{}-{}".format(self.code, self.suffix)
+
+    
 ##
 ## An address. If for any reason we are unable to find a matching
 ## decomposed address we will store the raw address string in `raw`.
@@ -329,6 +438,14 @@ class Address(models.Model):
     formatted = models.CharField(max_length=200, blank=True)
     latitude = models.FloatField(blank=True, null=True)
     longitude = models.FloatField(blank=True, null=True)
+    intersection = models.CharField(max_length=165, blank=True,
+                                    default="")
+    colloquial_area = models.CharField(max_length=165, blank=True,
+                                       default="")
+    neighborhood = models.ForeignKey(Neighborhood, blank=True,
+                                     null=True, on_delete=models.CASCADE)
+    airport = models.ForeignKey(Airport, blank=True, null=True,
+                                on_delete=models.CASCADE)
 
     class Meta:
         verbose_name_plural = 'Addresses'
@@ -393,7 +510,6 @@ class AddressField(models.ForeignKey):
         super(AddressField, self).__init__(*args, **kwargs)
 
     def contribute_to_class(self, cls, name, virtual_only=False):
-        # super(ForeignObject, self).contribute_to_class(cls, name, virtual_only=virtual_only)
         super(ForeignObject, self).contribute_to_class(cls, name)
         setattr(cls, self.name, AddressDescriptor(self))
 
