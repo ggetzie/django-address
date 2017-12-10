@@ -23,14 +23,33 @@ if not settings.GOOGLE_API_KEY:
 
 
 class AddressWidget(forms.TextInput):
-    components = [('country', 'country'), ('country_code', 'country_short'),
-                  ('locality', 'locality'), ('sublocality', 'sublocality'),
-                  ('postal_code', 'postal_code'), ('route', 'route'),
+    components = [('country', 'country'),
+                  ('country_code', 'country_short'),
+                  ('route', 'route'),
                   ('street_number', 'street_number'),
+                  ('locality', 'locality'),
+                  ('sublocality', 'sublocality'),
+                  ('sublocality_level_1', 'sublocality_level_1'),
+                  ('sublocality_level_2', 'sublocality_level_2'),
+                  ('sublocality_level_3', 'sublocality_level_3'),
+                  ('sublocality_level_4', 'sublocality_level_4'),
+                  ('sublocality_level_5', 'sublocality_level_5'),
+                  ('postal_code', 'postal_code'),
                   ('state', 'administrative_area_level_1'),
                   ('state_code', 'administrative_area_level_1_short'),
+                  ('admin2', 'administrative_area_level_2'),
+                  ('admin3', 'administrative_area_level_3'),
+                  ('admin4', 'administrative_area_level_4'),
+                  ('admin5', 'administrative_area_level_5'),
+                  ('colloquial_area', 'colloquial_area'),
+                  ('neighborhood', 'neighborhood'),
+                  ('airport', 'airport'),
+                  ('intersection', 'intersection'),
                   ('formatted', 'formatted_address'),
-                  ('latitude', 'lat'), ('longitude', 'lng')]
+                  ('latitude', 'lat'),
+                  ('longitude', 'lng'),
+                  
+    ]
 
     class Media:
         js = (

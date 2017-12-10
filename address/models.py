@@ -17,7 +17,10 @@ if sys.version > '3':
     basestring = (str, bytes)
     unicode = str
 
-__all__ = ['Country', 'State', 'Locality', 'Address', 'AddressField']
+__all__ = ['Country', 'State', 'Locality', 'Address', 'AddressField', 'Admin2',
+           'Admin3', 'Admin4', 'Admin5', 'SubLocality1', 'SubLocality2',
+           'SubLocality3', 'SubLocality4', 'SubLocality5', 'PostalCode',
+           'PostalCodeSuffix', 'Neighborhood', 'Airport']
 
 class InconsistentDictError(Exception):
     pass
@@ -29,7 +32,24 @@ def _to_python(value):
     state = value.get('state', '')
     state_code = value.get('state_code', '')
     locality = value.get('locality', '')
-    sublocality = value.get('sublocality', '')
+
+    if 'sublocality_level_1' in value:
+        sublocality1 = value.get('sublocality_level_1', '')
+    else:
+        sublocality1 = value.get('sublocality', '')
+        
+    sublocality2 = value.get('sublocality_level_2', '')
+    sublocality3 = value.get('sublocality_level_3', '')
+    sublocality4 = value.get('sublocality_level_4', '')
+    sublocality5 = value.get('sublocality_level_5', '')
+    admin2 = value.get('admin2', '')
+    admin3 = value.get('admin3', '')
+    admin4 = value.get('admin4', '')
+    admin5 = value.get('admin5', '')
+    colloquial_area = value.get('colloquial_area', '')
+    airport = value.get('airport', '')
+    neighborhood = value.get('neighborhood')
+    intersection = value.get('intersection')
     postal_code = value.get('postal_code', '')
     street_number = value.get('street_number', '')
     route = value.get('route', '')
@@ -41,26 +61,33 @@ def _to_python(value):
     if not raw:
         return None
 
+    # won't need this when storing sublocalities separately
     # Fix issue with NYC boroughs (https://code.google.com/p/gmaps-api-issues/issues/detail?id=635)
-    if not locality and sublocality:
-        locality = sublocality
+    # if not locality and sublocality:
+    #     locality = sublocality
 
-    # If we have an inconsistent set of value bail out now.
-    if (country or state or locality) and not (country and state and locality):
+    # We need a country at the very least
+    if not country and country_code:
         raise InconsistentDictError
 
     # Handle the country.
-    try:
-        country_obj = Country.objects.get(name=country)
-    except Country.DoesNotExist:
-        if country:
-            if len(country_code) > Country._meta.get_field('code').max_length:
-                if country_code != country:
-                    raise ValueError('Invalid country code (too long): %s'%country_code)
-                country_code = ''
-            country_obj = Country.objects.create(name=country, code=country_code)
-        else:
-            country_obj = None
+    # truncate country codes that are too long, this shouldn't be an issue
+    # with data returned from google maps
+    country_code = country_code[:2].upper()
+    country_obj, new_country = Country.objects.\
+                               get_or_create(name=country,
+                                             code=country_code)
+    # try:
+    #     country_obj = Country.objects.get(name=country)
+    # except Country.DoesNotExist:
+    #     if country:
+    #         if len(country_code) > Country._meta.get_field('code').max_length:
+    #             if country_code != country:
+    #                 raise ValueError('Invalid country code (too long): %s'%country_code)
+    #             country_code = ''
+    #         country_obj = Country.objects.create(name=country, code=country_code)
+    #     else:
+    #         country_obj = None
 
     # Handle the state.
     try:
@@ -151,27 +178,27 @@ def to_python(value):
     # Not in any of the formats I recognise.
     raise ValidationError('Invalid address value.')
 
-##
-## A country.
-##
 @python_2_unicode_compatible
 class Country(models.Model):
     name = models.CharField(max_length=40, unique=True)
-    code = models.CharField(max_length=2, blank=True) # not unique as there are duplicates (IT)
+    
+    # code not unique as there are duplicates (IT)
+    code = models.CharField(max_length=2, blank=True, default="") 
 
     class Meta:
         verbose_name_plural = 'Countries'
         ordering = ('name',)
 
     def __str__(self):
-        return '%s'%(self.name or self.code)
+        return self.name
 
-##
-## A state. Google refers to this as `administration_level_1`.
-##
+
 @python_2_unicode_compatible
 class State(models.Model):
-    """Google maps address component - administrative_area_level_1"""
+    """
+    Google maps address component - administrative_area_level_1
+    State in the United States
+    """
     name = models.CharField(max_length=165)
     code = models.CharField(max_length=3, blank=True)
     country = models.ForeignKey(Country, related_name='states',
@@ -182,12 +209,7 @@ class State(models.Model):
         ordering = ('country', 'name')
 
     def __str__(self):
-        txt = self.to_str()
-        country = '%s'%self.country
-        if country and txt:
-            txt += ', '
-        txt += country
-        return txt
+        return "{}, {}".format(self.name, self.country)
 
     def to_str(self):
         return '%s'%(self.name or self.code)
@@ -278,27 +300,17 @@ class Admin5(models.Model):
 class Locality(models.Model):
     """ Google maps address component - locality"""
     name = models.CharField(max_length=165)
-    postal_code = models.CharField(max_length=10, blank=True)
     state = models.ForeignKey(State, related_name='localities',
                               on_delete=models.CASCADE)
 
     class Meta:
         verbose_name_plural = 'Localities'
-        unique_together = ('name', 'postal_code', 'state')
+        unique_together = ('name', 'state')
         ordering = ('state', 'name')
 
     def __str__(self):
-        txt = '%s'%self.name
-        state = self.state.to_str() if self.state else ''
-        if txt and state:
-            txt += ', '
-        txt += state
-        if self.postal_code:
-            txt += ' %s'%self.postal_code
-        cntry = '%s'%(self.state.country if self.state and self.state.country else '')
-        if cntry:
-            txt += ', %s'%cntry
-        return txt
+        return "{}, {} {}".format(self.name, self.state.name,
+                                  self.state.country.name)
 
 ###
 ### sublocality (level 1 if multiple)
@@ -429,23 +441,83 @@ class PostalCodeSuffix(models.Model):
 ##
 @python_2_unicode_compatible
 class Address(models.Model):
-    street_number = models.CharField(max_length=20, blank=True)
-    route = models.CharField(max_length=100, blank=True)
+    street_number = models.CharField(max_length=20, blank=True, default="")
+    route = models.CharField(max_length=100, blank=True, default="")
     locality = models.ForeignKey(Locality, related_name='addresses',
                                  blank=True, null=True,
                                  on_delete=models.CASCADE)
+    
+    sublocality1 = models.ForeignKey(SubLocality1, blank=True, null=True,
+                                     related_name='sl1_addresses',
+                                     on_delete=models.SET_NULL)
+    
+    sublocality2 = models.ForeignKey(SubLocality2, blank=True, null=True,
+                                     related_name='sl2_addresses',
+                                     on_delete=models.SET_NULL)
+
+    sublocality3 = models.ForeignKey(SubLocality3, blank=True, null=True,
+                                     related_name='sl3_addresses',
+                                     on_delete=models.SET_NULL)
+
+    sublocality4 = models.ForeignKey(SubLocality4, blank=True, null=True,
+                                     related_name='sl4_addresses',
+                                     on_delete=models.SET_NULL)
+
+    sublocality5 = models.ForeignKey(SubLocality1, blank=True, null=True,
+                                     related_name='sl5_addresses',
+                                     on_delete=models.SET_NULL)
+
+    admin2 = models.ForeignKey(Admin2, blank=True, null=True,
+                               related_name='adm2_addresses',
+                               on_delete=models.CASCADE)
+
+    admin3 = models.ForeignKey(Admin3, blank=True, null=True,
+                               related_name='adm3_addresses',
+                               on_delete=models.CASCADE)
+
+    admin4 = models.ForeignKey(Admin4, blank=True, null=True,
+                               related_name='adm4_addresses',
+                               on_delete=models.SET_NULL)
+
+    admin5 = models.ForeignKey(Admin5, blank=True, null=True,
+                               related_name='adm5_addresses',
+                               on_delete=models.SET_NULL)
+
+    state = models.ForeignKey(State, blank=True, null=True,
+                              on_delete = models.SET_NULL)
+    
+    postal_code = models.ForeignKey(PostalCode, on_delete=models.CASCADE,
+                                    related_name='pc_addresses',
+                                    blank=True, null=True)
+
+    postal_code_suffix = models.ForeignKey(PostalCodeSuffix,
+                                           related_name='pcs_addresses',
+                                           blank=True,
+                                           null=True,
+                                           on_delete=models.SET_NULL)
+
+    country = models.ForeignKey(Country, blank=True, null=True,
+                                on_delete=models.SET_NULL)
+    
     raw = models.CharField(max_length=200)
     formatted = models.CharField(max_length=200, blank=True)
     latitude = models.FloatField(blank=True, null=True)
     longitude = models.FloatField(blank=True, null=True)
     intersection = models.CharField(max_length=165, blank=True,
                                     default="")
+    
     colloquial_area = models.CharField(max_length=165, blank=True,
                                        default="")
+    
     neighborhood = models.ForeignKey(Neighborhood, blank=True,
-                                     null=True, on_delete=models.CASCADE)
+                                     null=True, on_delete=models.SET_NULL)
+    
     airport = models.ForeignKey(Airport, blank=True, null=True,
-                                on_delete=models.CASCADE)
+                                on_delete=models.SET_NULL)
+    
+
+    
+
 
     class Meta:
         verbose_name_plural = 'Addresses'
@@ -453,22 +525,10 @@ class Address(models.Model):
         # unique_together = ('locality', 'route', 'street_number')
 
     def __str__(self):
-        if self.formatted != '':
-            txt = '%s'%self.formatted
-        elif self.locality:
-            txt = ''
-            if self.street_number:
-                txt = '%s'%self.street_number
-            if self.route:
-                if txt:
-                    txt += ' %s'%self.route
-            locality = '%s'%self.locality
-            if txt and locality:
-                txt += ', '
-            txt += locality
+        if self.formatted:
+            return self.formatted
         else:
-            txt = '%s'%self.raw
-        return txt
+            return self.raw
 
     def clean(self):
         if not self.raw:
@@ -476,22 +536,30 @@ class Address(models.Model):
 
     def as_dict(self):
         ad = dict(
-            street_number=self.street_number,
-            route=self.route,
+            street_number = self.street_number,
+            route = self.route,
+            locality = self.locality or '',
+            sublocality_level_1 = self.sublocality1 or '',
+            sublocality_level_2 = self.sublocality2 or '',
+            sublocality_level_3 = self.sublocality3 or '',
+            sublocality_level_4 = self.sublocality4 or '',
+            sublocality_level_5 = self.sublocality5 or '',
+            state = self.state or '',
+            administrative_area_level_1 = self.state,
+            administrative_area_level_2 = self.admin2 or '',
+            administrative_area_level_3 = self.admin3 or '',
+            administrative_area_level_4 = self.admin4 or '',
+            administrative_area_level_5 = self.admin5 or '',
+            country = self.country or '',
             raw=self.raw,
             formatted=self.formatted,
-            latitude=self.latitude if self.latitude else '',
-            longitude=self.longitude if self.longitude else '',
+            latitude=self.latitude or '',
+            longitude=self.longitude or '',
+            intersection = self.intersection,
+            airport = self.airport or '',
+            neighborhood = self.neighborhood or '',
+            colloquial_area = self.colloquial_area,
         )
-        if self.locality:
-            ad['locality'] = self.locality.name
-            ad['postal_code'] = self.locality.postal_code
-            if self.locality.state:
-                ad['state'] = self.locality.state.name
-                ad['state_code'] = self.locality.state.code
-                if self.locality.state.country:
-                    ad['country'] = self.locality.state.country.name
-                    ad['country_code'] = self.locality.state.country.code
         return ad
 
 class AddressDescriptor(ForwardManyToOneDescriptor):
