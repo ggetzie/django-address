@@ -48,8 +48,8 @@ def _to_python(value):
     admin5 = value.get('admin5', '')
     colloquial_area = value.get('colloquial_area', '')
     airport = value.get('airport', '')
-    neighborhood = value.get('neighborhood')
-    intersection = value.get('intersection')
+    neighborhood = value.get('neighborhood', '')
+    intersection = value.get('intersection', '')
     postal_code = value.get('postal_code', '')
     street_number = value.get('street_number', '')
     route = value.get('route', '')
@@ -60,11 +60,6 @@ def _to_python(value):
     # If there is no value (empty raw) then return None.
     if not raw:
         return None
-
-    # won't need this when storing sublocalities separately
-    # Fix issue with NYC boroughs (https://code.google.com/p/gmaps-api-issues/issues/detail?id=635)
-    # if not locality and sublocality:
-    #     locality = sublocality
 
     # We need a country at the very least
     if not country and country_code:
@@ -77,41 +72,107 @@ def _to_python(value):
     country_obj, new_country = Country.objects.\
                                get_or_create(name=country,
                                              code=country_code)
-    # try:
-    #     country_obj = Country.objects.get(name=country)
-    # except Country.DoesNotExist:
-    #     if country:
-    #         if len(country_code) > Country._meta.get_field('code').max_length:
-    #             if country_code != country:
-    #                 raise ValueError('Invalid country code (too long): %s'%country_code)
-    #             country_code = ''
-    #         country_obj = Country.objects.create(name=country, code=country_code)
-    #     else:
-    #         country_obj = None
 
     # Handle the state.
-    try:
-        state_obj = State.objects.get(name=state, country=country_obj)
-    except State.DoesNotExist:
-        if state:
-            if len(state_code) > State._meta.get_field('code').max_length:
-                if state_code != state:
-                    raise ValueError('Invalid state code (too long): %s'%state_code)
-                state_code = ''
-            state_obj = State.objects.create(name=state, code=state_code, country=country_obj)
-        else:
-            state_obj = None
+    # again truncate too long codes
+    state_obj = None
+    if state and state_code:
+        state_code = state_code[:2].upper()
+        state_obj, new_state = State.objects.\
+                               get_or_create(name=state,
+                                             code=state_code,
+                                             country=country_obj)
+    # Handle postal codes
+    pc_obj = None
+    if postal_code:
+        pc_obj, pc_new = PostalCode.objects.\
+                         get_or_create(code=postal_code,
+                                       country=country_obj)
 
-    # Handle the locality.
-    try:
-        locality_obj = Locality.objects.get(name=locality, postal_code=postal_code, state=state_obj)
-    except Locality.DoesNotExist:
-        if locality:
-            locality_obj = Locality.objects.create(name=locality, postal_code=postal_code, state=state_obj)
-        else:
-            locality_obj = None
+    pcs_obj = None
+    if pc_obj and postal_code_suffix:
+        pcs_obj, pcs_new = PostalCodeSuffix.\
+                           objects.\
+                           get_or_create(suffix=postal_code_suffix,
+                                         postal_code=pc_obj)
+
+    # Handle administrative areas
+    admin2_obj = None
+    admin3_obj = None
+    admin4_obj = None
+    admin5_obj = None
+
+    if admin2:
+        admin2_obj, admin2_new = Admin2.objects.get_or_create(name=admin2,
+                                                              state=state_obj)
+    if admin2_obj and admin3:
+        admin3_obj, admin3_new = Admin3.objects.get_or_create(name=admin3,
+                                                              state=state_obj,
+                                                              parent=admin2_obj)
+    if admin3_obj and admin4:
+        admin4_obj, admin4_new = Admin4.objects.get_or_create(name=admin4,
+                                                              parent=admin3_obj)
+
+    if admin4_obj and admin5:
+        admin5_obj, admin5_new = Admin5.objects.get_or_create(name=admin5,
+                                                              parent=admin4_obj)
+        
+        
+    # Handle the locality and sublocalities.
+    locality_obj = None
+    sublocality1_obj = None
+    sublocality2_obj = None
+    sublocality3_obj = None
+    sublocality4_obj = None
+    sublocality5_obj = None
+    
+    if locality:
+        locality_obj, lo_new = Locality.objects.get_or_create(name=locality,
+                                                              state=state_obj)
+    if sublocality1:
+        sublocality1_obj, sl1_new = SubLocality1.objects.\
+                                    get_or_create(name=sublocality1,
+                                                  locality=locality_obj,
+                                                  admin2=admin2_obj,
+                                                  state=state_obj)
+    if sublocality2 and sublocality1_obj:
+        sublocality2_obj, sl2_new = SubLocality2.objects.\
+                                    get_or_create(name=sublocality2,
+                                                  parent=sublocality1_obj)
+
+    if sublocality3 and sublocality2_obj:
+        sublocality3_obj, sl3_new = SubLocality3.objects.\
+                                    get_or_create(name=sublocality3,
+                                                  parent=sublocality2_obj)
+
+    if sublocality4 and sublocality3_obj:
+        sublocality4_obj, sl4_new = SubLocality4.objects.\
+                                     get_or_create(name=sublocality4,
+                                                   parent=sublocality3_obj)
+
+    if sublocality5 and sublocality4_obj:
+        sublocality5_obj, sl5_new = SubLocality5.objects.\
+                                    get_or_create(name=sublocality5,
+                                                  parent=sublocality4_obj)
+
+    # Handle airport, neighborhood
+    airport_obj = None
+    if airport:
+        airport_obj, ap_new = Airport.objects.get_or_create(name=airport)
+
+    neighborhood_obj = None
+    if neighborhood and locality_obj:
+        neighborhood_obj, nh_new = Neighborhood.objects.\
+                                   get_or_create(name=Neighborhood,
+                                                 locality=locality_obj)
+
 
     # Handle the address.
+    # address_kwargs = {'street_number', street_number,
+    #                   'route', route,
+    #                   'raw',
+    
+    # address_obj, addr_new = Address.objects.get_or_create()
     try:
         if not (street_number or route or locality):
             address_obj = Address.objects.get(raw=raw)
@@ -232,9 +293,9 @@ class Admin2(models.Model):
         ordering = ('state', 'name')
 
     def __str__(self):
-        txt = "{} - {} - {}".format(self.name,
-                                    self.state.name,
-                                    self.state.country.name)
+        txt = "{} - {}, {}".format(self.name,
+                                   self.state.name,
+                                   self.state.country.name)
         return txt
 
 ###
@@ -312,13 +373,15 @@ class Locality(models.Model):
         return "{}, {} {}".format(self.name, self.state.name,
                                   self.state.country.name)
 
-###
-### sublocality (level 1 if multiple)
-###
 class SubLocality1(models.Model):
     """ Google maps address component - sublocality or sublocality_level_1"""
     name = models.CharField(max_length=165)
-    locality = models.ForeignKey(Locality, on_delete=models.CASCADE)
+    locality = models.ForeignKey(Locality, on_delete=models.SET_NULL,
+                                 blank=True, null=True)
+    admin2 = models.ForeignKey(Admin2, on_delete=models.SET_NULL,
+                               blank=True, null=True)
+    state = models.ForeignKey(State, on_delete=models.CASCADE,
+                              blank=True, null=True)
 
     class Meta:
         unique_together = ('name', 'locality')
@@ -327,9 +390,7 @@ class SubLocality1(models.Model):
     def __str__(self):
         return "{}, {}".format(self.name, self.locality)
 
-###
-### sublocality level 2
-###    
+    
 class SubLocality2(models.Model):
     """ Google maps address component - sublocality_level_2"""
     name = models.CharField(max_length=165)
@@ -343,9 +404,6 @@ class SubLocality2(models.Model):
         return "{}, {}".format(self.name, self.parent)
 
 
-###
-### sublocality level 3
-###    
 class SubLocality3(models.Model):
     """ Google maps address component - sublocality_level_3"""
     name = models.CharField(max_length=165)
@@ -359,9 +417,6 @@ class SubLocality3(models.Model):
         return "{}, {}".format(self.name, self.parent)
 
     
-###
-### sublocality level 4
-###    
 class SubLocality4(models.Model):
     """ Google maps address component - sublocality_level_4"""
     name = models.CharField(max_length=165)
@@ -499,7 +554,7 @@ class Address(models.Model):
     country = models.ForeignKey(Country, blank=True, null=True,
                                 on_delete=models.SET_NULL)
     
-    raw = models.CharField(max_length=200)
+    raw = models.CharField(max_length=200, unique=True)
     formatted = models.CharField(max_length=200, blank=True)
     latitude = models.FloatField(blank=True, null=True)
     longitude = models.FloatField(blank=True, null=True)
