@@ -167,46 +167,85 @@ def _to_python(value):
                                                  locality=locality_obj)
 
 
-    # Handle the address.
-    # address_kwargs = {'street_number', street_number,
-    #                   'route', route,
-    #                   'raw',
+    addr, addr_new = Address.objects.get_or_create(raw=raw)
     
-    # address_obj, addr_new = Address.objects.get_or_create()
-    try:
-        if not (street_number or route or locality):
-            address_obj = Address.objects.get(raw=raw)
-        else:
-            address_obj = Address.objects.get(
-                street_number=street_number,
-                route=route,
-                locality=locality_obj
-            )
-    except Address.DoesNotExist:
-        address_obj = Address(
-            street_number=street_number,
-            route=route,
-            raw=raw,
-            locality=locality_obj,
-            formatted=formatted,
-            latitude=latitude,
-            longitude=longitude,
-        )
+    # if address exists, add in any missing parts
+    if not addr_new:
+        if street_number and not addr.street_number:
+            addr.street_number = street_number
+            
+        if route and not addr.route:
+            addr.route = route
 
-        # If "formatted" is empty try to construct it from other values.
-        if not address_obj.formatted:
-            address_obj.formatted = unicode(address_obj)
+        if locality_obj and not addr.locality:
+            addr.locality = locality_obj
 
-        # Need to save.
-        address_obj.save()
+        if sublocality1_obj and not addr.sublocality1:
+            addr.sublocality1 = sublocality1_obj
 
+        if sublocality2_obj and not addr.sublocality2:
+            addr.sublocality2 = sublocality2_obj
+
+        if sublocality3_obj and not addr.sublocality3:
+            addr.sublocality3 = sublocality3_obj
+
+        if sublocality4_obj and not addr.sublocality4:
+            addr.sublocality4 = sublocality4_obj
+
+        if sublocality5_obj and not addr.sublocality5:
+            addr.sublocality5 = sublocality5_obj
+
+        if admin2_obj and not addr.admin2:
+            addr.admin2 = admin2_obj
+
+        if admin3_obj and not addr.admin3:
+            addr.admin3 = admin3_obj
+
+        if admin4_obj and not addr.admin4:
+            addr.admin4 = admin4_obj
+
+        if admin5_obj and not addr.admin5:
+            addr.admin5 = admin5_obj
+
+        if state_obj and not addr.state:
+            addr.state = state_obj
+
+        if pc_obj and not addr.postal_code:
+            addr.postal_code = pc_obj
+
+        if pcs_obj and not addr.postal_code_suffix:
+            addr.postal_code_suffix = pcs_obj            
+
+        if country_obj and not addr.country:
+            addr.country = country_obj
+
+        if formatted and not addr.formatted:
+            addr.formatted = formatted
+
+        if latitude and not addr.latitude:
+            addr.latitude = latitude
+
+        if longitude and not addr.longitude:
+            addr.longitude = longitude
+
+        if colloquial_area and not addr.colloquial_area:
+            addr.colloquial_area = colloquial_area
+
+        if neighborhood_obj and not addr.neighborhood:
+            addr.neighborhood = neighborhood_obj
+
+        if airport_obj and not addr.airport:
+            addr.airport = airport_obj
+
+        addr.save()
+            
     # Done.
-    return address_obj
+    return addr
 
-##
-## Convert a dictionary to an address.
-##
 def to_python(value):
+    """
+    Convert a dictionary to an Address object
+    """
 
     # Keep `None`s.
     if value is None:
