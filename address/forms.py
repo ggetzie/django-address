@@ -35,6 +35,7 @@ class AddressWidget(forms.TextInput):
                   ('sublocality_level_4', 'sublocality_level_4'),
                   ('sublocality_level_5', 'sublocality_level_5'),
                   ('postal_code', 'postal_code'),
+                  ('postal_code_suffix', 'postal_code_suffix'),
                   ('state', 'administrative_area_level_1'),
                   ('state_code', 'administrative_area_level_1_short'),
                   ('admin2', 'administrative_area_level_2'),
@@ -126,5 +127,6 @@ class AddressField(forms.ModelChoiceField):
                                                     params={'field': field})
                 else:
                     value[field] = None
-
+                    
+        logger.info(value)
         return to_python(value)

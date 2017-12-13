@@ -32,12 +32,8 @@ def _to_python(value):
     state = value.get('state', '')
     state_code = value.get('state_code', '')
     locality = value.get('locality', '')
-
-    if 'sublocality_level_1' in value:
-        sublocality1 = value.get('sublocality_level_1', '')
-    else:
-        sublocality1 = value.get('sublocality', '')
-        
+    sublocality = value.get('sublocality', '')
+    sublocality1 = value.get('sublocality_level_1', '')
     sublocality2 = value.get('sublocality_level_2', '')
     sublocality3 = value.get('sublocality_level_3', '')
     sublocality4 = value.get('sublocality_level_4', '')
@@ -51,6 +47,7 @@ def _to_python(value):
     neighborhood = value.get('neighborhood', '')
     intersection = value.get('intersection', '')
     postal_code = value.get('postal_code', '')
+    postal_code_suffix = value.get('postal_code_suffix', '')
     street_number = value.get('street_number', '')
     route = value.get('route', '')
     formatted = value.get('formatted', '')
@@ -59,15 +56,18 @@ def _to_python(value):
 
     # If there is no value (empty raw) then return None.
     if not raw:
+        logger.info('no raw found')
         return None
 
     # We need a country at the very least
     if not country and country_code:
+        logger.info('no country found')
         raise InconsistentDictError
 
     # Handle the country.
     # truncate country codes that are too long, this shouldn't be an issue
     # with data returned from google maps
+    logger.info('country=%s' % country)
     country_code = country_code[:2].upper()
     country_obj, new_country = Country.objects.\
                                get_or_create(name=country,
@@ -101,6 +101,11 @@ def _to_python(value):
     admin3_obj = None
     admin4_obj = None
     admin5_obj = None
+    logger.info('admin2=%s' % admin2)
+    logger.info('admin3=%s' % admin3)
+    logger.info('admin4=%s' % admin4)
+    logger.info('admin5=%s' % admin5)
+    
 
     if admin2:
         admin2_obj, admin2_new = Admin2.objects.get_or_create(name=admin2,
@@ -125,16 +130,26 @@ def _to_python(value):
     sublocality3_obj = None
     sublocality4_obj = None
     sublocality5_obj = None
+
+    logger.info('locality=%s' % locality)
+    logger.info('sublocality1=%s' % sublocality1)
+    logger.info('sublocality2=%s' % sublocality2)
+    logger.info('sublocality3=%s' % sublocality3)
+    logger.info('sublocality4=%s' % sublocality4)
+    logger.info('sublocality5=%s' % sublocality5)
     
     if locality:
         locality_obj, lo_new = Locality.objects.get_or_create(name=locality,
                                                               state=state_obj)
-    if sublocality1:
+
+    if sublocality or sublocality1:
+        slname = sublocality or sublocality1
         sublocality1_obj, sl1_new = SubLocality1.objects.\
-                                    get_or_create(name=sublocality1,
+                                    get_or_create(name=slname,
                                                   locality=locality_obj,
                                                   admin2=admin2_obj,
                                                   state=state_obj)
+        
     if sublocality2 and sublocality1_obj:
         sublocality2_obj, sl2_new = SubLocality2.objects.\
                                     get_or_create(name=sublocality2,
@@ -163,11 +178,37 @@ def _to_python(value):
     neighborhood_obj = None
     if neighborhood and locality_obj:
         neighborhood_obj, nh_new = Neighborhood.objects.\
-                                   get_or_create(name=Neighborhood,
+                                   get_or_create(name=neighborhood,
                                                  locality=locality_obj)
 
-
-    addr, addr_new = Address.objects.get_or_create(raw=raw)
+    addr_defaults = {
+        'street_number': street_number,
+        'route': route,
+        'locality': locality_obj,
+        'sublocality1': sublocality1_obj,
+        'sublocality2': sublocality2_obj,
+        'sublocality3': sublocality3_obj,
+        'sublocality4': sublocality4_obj,
+        'sublocality5': sublocality5_obj,
+        'admin2': admin2_obj,
+        'admin3': admin3_obj,
+        'admin4': admin4_obj,
+        'admin5': admin5_obj,
+        'state': state_obj,
+        'postal_code': pc_obj,
+        'postal_code_suffix': pcs_obj,
+        'country': country_obj,
+        'formatted': formatted,
+        'latitude': latitude,
+        'longitude': longitude,
+        'intersection': intersection,
+        'colloquial_area': colloquial_area,
+        'neighborhood': neighborhood_obj,
+        'airport': airport_obj,
+    }
+    
+    addr, addr_new = Address.objects.get_or_create(raw=raw,
+                                                   defaults=addr_defaults)
     
     # if address exists, add in any missing parts
     if not addr_new:
@@ -357,7 +398,9 @@ class Admin3(models.Model):
         ordering = ('state', 'parent', 'name')
 
     def __str__(self):
-        txt = "{}, {} - {}".format(name, state.code, country.name)
+        txt = "{}, {} - {}".format(self.name,
+                                   self.state.code,
+                                   self.state.country.code)
         return txt
 
 
@@ -409,7 +452,7 @@ class Locality(models.Model):
         ordering = ('state', 'name')
 
     def __str__(self):
-        return "{}, {} {}".format(self.name, self.state.name,
+        return "{}, {} {}".format(self.name, self.state.code,
                                   self.state.country.name)
 
 class SubLocality1(models.Model):
@@ -427,7 +470,8 @@ class SubLocality1(models.Model):
         ordering = ('name', 'locality')
 
     def __str__(self):
-        return "{}, {}".format(self.name, self.locality)
+        parent = self.locality or self.admin2 or self.state
+        return "{}, {}".format(self.name, parent)
 
     
 class SubLocality2(models.Model):
@@ -633,17 +677,17 @@ class Address(models.Model):
             street_number = self.street_number,
             route = self.route,
             locality = self.locality or '',
-            sublocality_level_1 = self.sublocality1 or '',
-            sublocality_level_2 = self.sublocality2 or '',
-            sublocality_level_3 = self.sublocality3 or '',
-            sublocality_level_4 = self.sublocality4 or '',
-            sublocality_level_5 = self.sublocality5 or '',
+            sublocality1 = self.sublocality1 or '',
+            sublocality2 = self.sublocality2 or '',
+            sublocality3 = self.sublocality3 or '',
+            sublocality4 = self.sublocality4 or '',
+            sublocality5 = self.sublocality5 or '',
             state = self.state or '',
             administrative_area_level_1 = self.state,
-            administrative_area_level_2 = self.admin2 or '',
-            administrative_area_level_3 = self.admin3 or '',
-            administrative_area_level_4 = self.admin4 or '',
-            administrative_area_level_5 = self.admin5 or '',
+            admin2 = self.admin2 or '',
+            admin3 = self.admin3 or '',
+            admin4 = self.admin4 or '',
+            admin5 = self.admin5 or '',
             country = self.country or '',
             raw=self.raw,
             formatted=self.formatted,
@@ -653,6 +697,8 @@ class Address(models.Model):
             airport = self.airport or '',
             neighborhood = self.neighborhood or '',
             colloquial_area = self.colloquial_area,
+            postal_code = self.postal_code or '',
+            postal_code_suffix = self.postal_code_suffix or ''
         )
         return ad
 
