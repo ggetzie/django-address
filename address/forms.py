@@ -52,16 +52,27 @@ class AddressWidget(forms.TextInput):
                   
     ]
 
-    class Media:
-        js = (
-            'https://maps.googleapis.com/maps/api/js?libraries=places&key=%s' % settings.GOOGLE_API_KEY,
-            'js/jquery.geocomplete.min.js',
-            'address/js/address.js')
+    @property
+    def media(self):
+        if self.show_map:
+            addr_js = 'address/js/address_map.js'
+        else:
+            addr_js = 'address/js/address.js'
+            
+        maps_api  = ('https://maps.googleapis.com/maps/api/js?'
+                     'libraries=places&key=%s') % settings.GOOGLE_API_KEY
+        js = (maps_api,
+              'js/jquery.geocomplete.min.js',
+              addr_js)
+        return forms.Media(js=js)
+
+    
 
     def __init__(self, *args, **kwargs):
         attrs = kwargs.get('attrs', {})
         classes = attrs.get('class', '')
         classes += (' ' if classes else '') + 'address'
+        self.show_map = kwargs.pop('show_map', False)
         attrs['class'] = classes
         kwargs['attrs'] = attrs
         super(AddressWidget, self).__init__(*args, **kwargs)

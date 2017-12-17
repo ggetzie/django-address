@@ -21,4 +21,5 @@
 
 $("#id_address").geocomplete({details: "#address_components",
 			      detailsAttribute: "data-geo",
+			      map: "#map_canvas"
 			     });
