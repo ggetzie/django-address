@@ -2,24 +2,6 @@
 
 from django.db import migrations
 
-def dedupe(apps, schema_editor):
-    """
-    remove duplicate localities
-    """
-    Address = apps.get_model('address', 'Address')
-    Locality = apps.get_model('address', 'Locality')
-
-    for addr in Address.objects.all():
-        locs = Locality.objects.filter(name=addr.locality.name,
-                                       state=addr.locality.state).\
-                                       order_by(id)
-        if len(locs) == 1: continue
-        if addr.locality.id > locs[0].id:
-            addr.locality = locs[0]
-            addr.save()
-        locs[1:].delete()
-
-        
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -27,7 +9,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunPython(dedupe),
+        # migrations.RunPython(dedupe),
         
         migrations.AlterUniqueTogether(
             name='locality',
