@@ -59,6 +59,25 @@ def _to_python(value):
         logger.info('no raw found')
         return None
 
+    # Try finding an equivalent address in the database two ways
+    # First, if formatted is the same
+    # then if lat/long are the same
+    if formatted:
+        try:
+            addr = Address.objects.get(formatted=formatted)
+            return addr
+        except Address.DoesNotExist:
+            pass
+
+    if latitude and longitude:
+        try:
+            addr = Address.objects.get(latitude=latitude,
+                                       longitude=longitude)
+            return addr
+        except Address.DoesNotExist:
+            pass
+
+
     # We need a country at the very least
     if not country and country_code:
         logger.info('no country found')
@@ -71,7 +90,7 @@ def _to_python(value):
     country_code = country_code[:2].upper()
     country_obj, new_country = Country.objects.\
                                get_or_create(name=country,
-                                             code=country_code)
+                                             defaults={'code': country_code})
 
     # Handle the state.
     # again truncate too long codes
@@ -206,6 +225,37 @@ def _to_python(value):
         'neighborhood': neighborhood_obj,
         'airport': airport_obj,
     }
+
+    # last ditch effor to check for an equivalent address in
+    # the database
+    if all([street_number,
+            route,
+            locality_obj,
+            state_obj,
+            country_obj]):
+        try:
+            addr = Address.objects.get(street_number=street_number,
+                                       route=route,
+                                       locality=locality_obj,
+                                       state=state_obj,
+                                       country=country_obj)
+            return addr
+        except Address.DoesNotExist:
+            pass
+    elif all([street_number,
+              route,
+              admin3_obj,
+              state_obj,
+              country_obj]):
+        try:
+            addr = Address.objects.get(street_number=street_number,
+                                       route=route,
+                                       locality=locality_obj,
+                                       state=state_obj,
+                                       country=country_obj)
+            return addr
+        except Address.DoesNotExist:
+            pass
     
     addr, addr_new = Address.objects.get_or_create(raw=raw,
                                                    defaults=addr_defaults)
