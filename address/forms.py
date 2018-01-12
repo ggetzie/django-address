@@ -49,6 +49,7 @@ class AddressWidget(forms.TextInput):
                   ('formatted', 'formatted_address'),
                   ('latitude', 'lat'),
                   ('longitude', 'lng'),
+                  ('pk', 'address_pk'),
                   
     ]
 
@@ -81,13 +82,18 @@ class AddressWidget(forms.TextInput):
 
         # Can accept None, a dictionary of values or an Address object.
         if value in (None, ''):
+            logger.info('found nothing')
             ad = {}
         elif isinstance(value, dict):
+            logger.info('found dict')
             ad = value
         elif isinstance(value, (int, long)):
+            logger.info('found pk')
             ad = Address.objects.get(pk=value)
             ad = ad.as_dict()
         else:
+            logger.info("found address object")
+            logger.info(value.as_dict())
             ad = value.as_dict()
 
         # Generate the elements. We should create a suite of hidden fields
@@ -102,6 +108,7 @@ class AddressWidget(forms.TextInput):
                 name, com[0], com[1], ad.get(com[0], ''))
             )
         elems.append('</div>')
+        
 
         return mark_safe(unicode('\n'.join(elems)))
 

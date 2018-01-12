@@ -53,6 +53,13 @@ def _to_python(value):
     formatted = value.get('formatted', '')
     latitude = value.get('latitude', None)
     longitude = value.get('longitude', None)
+    address_id = value.get('address_id', None)
+
+    # if address_id is in there, this was pre-filled from an
+    # address already in the database
+    if address_id:
+        addr = Address.objects.get(id=address_id)
+        return addr
 
     # If there is no value (empty raw) then return None.
     if not raw:
@@ -86,7 +93,6 @@ def _to_python(value):
     # Handle the country.
     # truncate country codes that are too long, this shouldn't be an issue
     # with data returned from google maps
-    logger.info('country=%s' % country)
     country_code = country_code[:2].upper()
     country_obj, new_country = Country.objects.\
                                get_or_create(name=country,
@@ -120,11 +126,6 @@ def _to_python(value):
     admin3_obj = None
     admin4_obj = None
     admin5_obj = None
-    logger.info('admin2=%s' % admin2)
-    logger.info('admin3=%s' % admin3)
-    logger.info('admin4=%s' % admin4)
-    logger.info('admin5=%s' % admin5)
-    
 
     if admin2:
         admin2_obj, admin2_new = Admin2.objects.get_or_create(name=admin2,
@@ -150,13 +151,6 @@ def _to_python(value):
     sublocality4_obj = None
     sublocality5_obj = None
 
-    logger.info('locality=%s' % locality)
-    logger.info('sublocality1=%s' % sublocality1)
-    logger.info('sublocality2=%s' % sublocality2)
-    logger.info('sublocality3=%s' % sublocality3)
-    logger.info('sublocality4=%s' % sublocality4)
-    logger.info('sublocality5=%s' % sublocality5)
-    
     if locality:
         locality_obj, lo_new = Locality.objects.get_or_create(name=locality,
                                                               state=state_obj)
@@ -726,29 +720,33 @@ class Address(models.Model):
         ad = dict(
             street_number = self.street_number,
             route = self.route,
-            locality = self.locality or '',
-            sublocality1 = self.sublocality1 or '',
-            sublocality2 = self.sublocality2 or '',
-            sublocality3 = self.sublocality3 or '',
-            sublocality4 = self.sublocality4 or '',
-            sublocality5 = self.sublocality5 or '',
-            state = self.state or '',
-            administrative_area_level_1 = self.state,
-            admin2 = self.admin2 or '',
-            admin3 = self.admin3 or '',
-            admin4 = self.admin4 or '',
-            admin5 = self.admin5 or '',
-            country = self.country or '',
+            locality = self.locality.name or '',
+            sublocality1 = self.sublocality1.name if self.sublocality1 else '',
+            sublocality2 = self.sublocality2.name if self.sublocality2 else '',
+            sublocality3 = self.sublocality3.name if self.sublocality3 else '',
+            sublocality4 = self.sublocality4.name if self.sublocality4 else '',
+            sublocality5 = self.sublocality5.name if self.sublocality5 else '',
+            state = self.state.name if self.state else '',
+            state_code = self.state.code if self.state else '',
+            administrative_area_level_1 = self.state.name if self.state else '',
+            admin2 = self.admin2.name if self.admin2 else '',
+            admin3 = self.admin3.name if self.admin3 else '',
+            admin4 = self.admin4.name if self.admin4 else '',
+            admin5 = self.admin5.name if self.admin5 else '',
+            country = self.country.name if self.country else '',
+            country_code = self.country.code if self.country else '',
             raw=self.raw,
             formatted=self.formatted,
             latitude=self.latitude or '',
             longitude=self.longitude or '',
             intersection = self.intersection,
-            airport = self.airport or '',
-            neighborhood = self.neighborhood or '',
+            airport = self.airport.name if self.airport else '',
+            neighborhood = self.neighborhood.name if self.neighborhood else '',
             colloquial_area = self.colloquial_area,
-            postal_code = self.postal_code or '',
-            postal_code_suffix = self.postal_code_suffix or ''
+            postal_code = self.postal_code.code if self.postal_code else '',
+            postal_code_suffix = (self.postal_code_suffix.suffix
+                                  if self.postal_code_suffix else ''),
+            pk = self.pk
         )
         return ad
 
