@@ -720,7 +720,7 @@ class Address(models.Model):
         ad = dict(
             street_number = self.street_number,
             route = self.route,
-            locality = self.locality.name or '',
+            locality = self.locality.name if self.locality else '',
             sublocality1 = self.sublocality1.name if self.sublocality1 else '',
             sublocality2 = self.sublocality2.name if self.sublocality2 else '',
             sublocality3 = self.sublocality3.name if self.sublocality3 else '',
