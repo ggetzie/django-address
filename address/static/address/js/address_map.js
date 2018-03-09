@@ -19,7 +19,26 @@
 // });
 
 
-$("#id_address").geocomplete({details: "#address_components",
-			      detailsAttribute: "data-geo",
-			      map: "#map_canvas"
-			     });
+// $("#id_address").geocomplete({details: "#address_components",
+// 			      detailsAttribute: "data-geo",
+// 			      map: "#map_canvas"
+// 			     });
+
+function addgeo() {
+    $('input.address').each(function(){
+        let self = $(this);
+	let cmps = $('#' + self.attr('name') + '_components');
+	let map_id = '#' + self.attr('id').replace('address', 'map_canvas')
+        self.geocomplete({
+            details: cmps,
+            detailsAttribute: 'data-geo',
+	    map: map_id
+        })
+	console.log(self.attr('id'));
+	console.log(map_id);
+    });
+}
+
+$(addgeo());
+
+

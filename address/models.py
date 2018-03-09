@@ -63,7 +63,7 @@ def _to_python(value):
 
     # If there is no value (empty raw) then return None.
     if not raw:
-        logger.info('no raw found')
+        logger.info('no raw found in _to_python')
         return None
 
     # Try finding an equivalent address in the database two ways
@@ -87,7 +87,7 @@ def _to_python(value):
 
     # We need a country at the very least
     if not country and country_code:
-        logger.info('no country found')
+        logger.info('no country found in _to_python')
         raise InconsistentDictError
 
     # Handle the country.
@@ -396,12 +396,7 @@ class State(models.Model):
     def __str__(self):
         return "{}, {}".format(self.name, self.country)
 
-    def to_str(self):
-        return '%s'%(self.name or self.code)
 
-###
-### County
-###
 @python_2_unicode_compatible
 class Admin2(models.Model):
     """
@@ -480,9 +475,6 @@ class Admin5(models.Model):
         return "{}, {}".format(self.name, self.parent)
 
 
-##
-## A locality (suburb).
-##
 @python_2_unicode_compatible
 class Locality(models.Model):
     """ Google maps address component - locality"""
@@ -557,9 +549,6 @@ class SubLocality4(models.Model):
         return "{}, {}".format(self.name, self.parent)
 
 
-###
-### sublocality level 5
-###    
 class SubLocality5(models.Model):
     """ Google maps address component - sublocality_level_5"""
     name = models.CharField(max_length=165)

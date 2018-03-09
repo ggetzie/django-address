@@ -82,17 +82,17 @@ class AddressWidget(forms.TextInput):
 
         # Can accept None, a dictionary of values or an Address object.
         if value in (None, ''):
-            logger.info('found nothing')
+            logger.info('found nothing in render')
             ad = {}
         elif isinstance(value, dict):
-            logger.info('found dict')
+            logger.info('found dict in render')
             ad = value
         elif isinstance(value, (int, long)):
-            logger.info('found pk')
+            logger.info('found pk in render')
             ad = Address.objects.get(pk=value)
             ad = ad.as_dict()
         else:
-            logger.info("found address object")
+            logger.info("found address object in render")
             logger.info(value.as_dict())
             ad = value.as_dict()
 
@@ -146,5 +146,5 @@ class AddressField(forms.ModelChoiceField):
                 else:
                     value[field] = None
                     
-        logger.info(value)
+        logger.info(f"Value of address in form:\n{value}")
         return to_python(value)

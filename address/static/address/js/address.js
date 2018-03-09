@@ -19,6 +19,20 @@
 // });
 
 
-$("#id_address").geocomplete({details: "#address_components",
-			      detailsAttribute: "data-geo",
-			     });
+// $("#id_address").geocomplete({details: "#address_components",
+// 			      detailsAttribute: "data-geo",
+// 			      map: '#map_canvas'
+// 			     });
+
+
+$(function(){
+    $('input.address').each(function(){
+        var self = $(this);
+	var cmps = $('#' + self.attr('name') + '_components');
+	var fmtd = $('input[name="' + self.attr('name') + '_formatted"]');
+        self.geocomplete({
+            details: cmps,
+            detailsAttribute: 'data-geo',
+        });
+    });
+});
