@@ -34,11 +34,12 @@ function addgeo() {
             detailsAttribute: 'data-geo',
 	    map: map_id
         })
-	console.log(self.attr('id'));
-	console.log(map_id);
     });
 }
 
-$(addgeo());
+function addgeolast() {
+    $('input.address')
+
+addgeo();
 
 
