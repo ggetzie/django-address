@@ -93,7 +93,7 @@ class AddressWidget(forms.TextInput):
             ad = ad.as_dict()
         else:
             logger.info("found address object in render")
-            logger.info(value.as_dict())
+            # logger.info(value.as_dict())
             ad = value.as_dict()
 
         # Generate the elements. We should create a suite of hidden fields
@@ -146,5 +146,5 @@ class AddressField(forms.ModelChoiceField):
                 else:
                     value[field] = None
                     
-        logger.info(f"Value of address in form:\n{value}")
+        # logger.info(f"Value of address in form:\n{value}")
         return to_python(value)

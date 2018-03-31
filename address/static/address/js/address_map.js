@@ -37,9 +37,5 @@ function addgeo() {
     });
 }
 
-function addgeolast() {
-    $('input.address')
-
-addgeo();
 
 
