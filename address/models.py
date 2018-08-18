@@ -63,7 +63,7 @@ def _to_python(value):
 
     # If there is no value (empty raw) then return None.
     if not raw:
-        logger.info('no raw found in _to_python')
+        # logger.info('no raw found in _to_python')
         return None
 
     # Try finding an equivalent address in the database two ways
@@ -87,7 +87,7 @@ def _to_python(value):
 
     # We need a country at the very least
     if not country and country_code:
-        logger.info('no country found in _to_python')
+        # logger.info('no country found in _to_python')
         raise InconsistentDictError
 
     # Handle the country.
