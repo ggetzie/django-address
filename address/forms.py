@@ -14,7 +14,7 @@ if sys.version > '3':
     basestring = (str, bytes)
     unicode = str
 
-logger = logging.getLogger(__name__)
+# logger = logging.getLogger(__name__)
 
 __all__ = ['AddressWidget', 'AddressField']
 

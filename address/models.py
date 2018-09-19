@@ -8,7 +8,7 @@ except ImportError:
 from django.utils.encoding import python_2_unicode_compatible
 
 import logging
-logger = logging.getLogger(__name__)
+# logger = logging.getLogger(__name__)
 
 # Python 3 fixes.
 import sys
